@@ -26,10 +26,15 @@ app.get('/', (req, res) => {
 type User = {
   clientId: string;
   username: string;
-  card: string | null;
+  card: string | undefined;
 };
 
-const rooms: Record<string, User[]> = {};
+type Room = {
+  users: User[];
+  reveal: boolean | undefined;
+};
+
+const rooms: Record<string, Room> = {};
 
 io.on('connection', client => {
   client.on('disconnect', () => {
@@ -38,7 +43,11 @@ io.on('connection', client => {
 
   client.on('create_room', username => {
     const newRoom = `${new Date().getTime()}`;
-    rooms[newRoom] = [{ clientId: client.id, username, card: null }];
+
+    rooms[newRoom] = {
+      users: [{ clientId: client.id, username, card: undefined }],
+      reveal: false
+    };
 
     client.join(newRoom);
 
@@ -49,21 +58,25 @@ io.on('connection', client => {
   });
 
   client.on('join_room', data => {
-    const { room, username } = data;
+    const { roomId, username } = data;
 
-    if (!rooms[room]) {
+    if (!rooms[roomId]) {
       return;
     }
 
-    if (rooms[room].some(c => c.clientId === client.id)) {
+    if (rooms[roomId].users.some(c => c.clientId === client.id)) {
       return;
     }
 
-    rooms[room].push({ clientId: client.id, username, card: null });
-    client.join(room);
+    rooms[roomId].users.push({
+      clientId: client.id,
+      username,
+      card: undefined
+    });
+    client.join(roomId);
 
-    client.broadcast.to(room).emit('users', rooms[room]);
-    client.emit('users', rooms[room]);
+    client.broadcast.to(roomId).emit('users', rooms[roomId]);
+    client.emit('users', rooms[roomId]);
 
     // console.log('ROOM JOINING', rooms);
   });
@@ -75,7 +88,7 @@ io.on('connection', client => {
       return;
     }
 
-    const indexEl = rooms[room].findIndex(user => {
+    const indexEl = rooms[room].users.findIndex(user => {
       return user.clientId === client.id;
     });
 
@@ -83,10 +96,30 @@ io.on('connection', client => {
       return;
     }
 
-    rooms[room][indexEl].card = card;
+    rooms[room].users[indexEl].card = card;
 
     client.broadcast.to(room).emit('users', rooms[room]);
     client.emit('users', rooms[room]);
+  });
+
+  client.on('reveal_cards', roomId => {
+    rooms[roomId].reveal = true;
+    client.broadcast.to(roomId).emit('reveal_cards');
+  });
+
+  client.on('start_new_voting', room => {
+    if (!rooms[room]) {
+      return;
+    }
+
+    rooms[room].users = rooms[room].users.map((u, i) => {
+      return { ...u, card: undefined };
+    });
+
+    rooms[room].reveal = false;
+
+    client.broadcast.to(room).emit('start_new_voting', rooms[room]);
+    client.emit('start_new_voting', rooms[room]);
   });
 });
 
