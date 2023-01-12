@@ -31,6 +31,7 @@ type User = {
 
 type Room = {
   users: User[];
+  voting: User[];
   reveal: boolean | undefined;
 };
 
@@ -38,7 +39,38 @@ const rooms: Record<string, Room> = {};
 
 io.on('connection', client => {
   client.on('disconnect', () => {
-    console.log(`Disconnected: ${client.id}`);
+    Object.keys(rooms).forEach(room => {
+      if (rooms[room].users.some(c => c.clientId === client.id)) {
+        const userIndex = rooms[room].users.findIndex(
+          user => user.clientId === client.id
+        );
+
+        const userVotingIndex = rooms[room].voting.findIndex(
+          user => user.clientId === client.id
+        );
+
+        if (!userIndex) {
+          return;
+        }
+
+        rooms[room].users.splice(userIndex, 1);
+
+        if (!userVotingIndex) {
+          return;
+        }
+
+        if (
+          rooms[room].voting[userVotingIndex] &&
+          rooms[room].voting[userVotingIndex].card
+        ) {
+          return;
+        }
+
+        rooms[room].voting.splice(userVotingIndex, 1);
+
+        return client.broadcast.to(room).emit('users', rooms[room]);
+      }
+    });
   });
 
   client.on('create_room', username => {
@@ -46,6 +78,7 @@ io.on('connection', client => {
 
     rooms[newRoom] = {
       users: [{ clientId: client.id, username, card: undefined }],
+      voting: [{ clientId: client.id, username, card: undefined }],
       reveal: false
     };
 
@@ -65,41 +98,58 @@ io.on('connection', client => {
     }
 
     if (rooms[roomId].users.some(c => c.clientId === client.id)) {
+      client.emit('users', rooms[roomId]);
+      client.broadcast.to(roomId).emit('users', rooms[roomId]);
       return;
     }
 
-    rooms[roomId].users.push({
+    const newUser = {
       clientId: client.id,
       username,
       card: undefined
-    });
+    };
+
+    rooms[roomId].users.push(newUser);
+    rooms[roomId].voting.push(newUser);
+
     client.join(roomId);
 
-    client.broadcast.to(roomId).emit('users', rooms[roomId]);
-    client.emit('users', rooms[roomId]);
+    client.broadcast.to(roomId).emit('user_joined', rooms[roomId]);
+    client.emit('user_joined', rooms[roomId]);
 
     // console.log('ROOM JOINING', rooms);
   });
 
   client.on('card', data => {
-    const { card, username, room } = data;
+    const { card, roomId } = data;
 
-    if (!rooms[room]) {
+    if (!rooms[roomId]) {
       return;
     }
 
-    const indexEl = rooms[room].users.findIndex(user => {
+    const userIndex = rooms[roomId].users.findIndex(user => {
       return user.clientId === client.id;
     });
 
-    if (indexEl === -1) {
+    const userVotingIndex = rooms[roomId].voting.findIndex(user => {
+      return user.clientId === client.id;
+    });
+
+    if (userIndex === -1) {
       return;
     }
 
-    rooms[room].users[indexEl].card = card;
+    rooms[roomId].users[userIndex].card = card;
 
-    client.broadcast.to(room).emit('users', rooms[room]);
-    client.emit('users', rooms[room]);
+    if (userVotingIndex === -1) {
+      rooms[roomId].voting.push(rooms[roomId].users[userIndex]);
+      return;
+    }
+
+    rooms[roomId].voting[userVotingIndex].card = card;
+
+    client.broadcast.to(roomId).emit('users', rooms[roomId]);
+    client.emit('users', rooms[roomId]);
   });
 
   client.on('reveal_cards', roomId => {
@@ -112,9 +162,11 @@ io.on('connection', client => {
       return;
     }
 
-    rooms[room].users = rooms[room].users.map((u, i) => {
+    rooms[room].users = rooms[room].users.map(u => {
       return { ...u, card: undefined };
     });
+
+    rooms[room].voting = rooms[room].users;
 
     rooms[room].reveal = false;
 
