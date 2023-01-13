@@ -3,13 +3,22 @@ import Room from '../models/Room';
 import { User } from '../models/User';
 
 export default (io: Server, client: Socket & { sessionId?: string }) => {
-  client.on('client:create_room', async ({ username, gameName }) => {
+  client.on('client:create_room', async ({ username, gameName, clientId }) => {
     console.log('Client Create Room', client.id, username);
 
-    client.sessionId = client.id;
+    if (clientId) {
+      client.sessionId = clientId;
+    } else {
+      client.sessionId = client.id;
+    }
+
+    if (!client.sessionId) {
+      console.log('invalid session id');
+      return;
+    }
 
     const user: User = {
-      clientId: client.id,
+      clientId: client.sessionId,
       username,
       card: ''
     };
@@ -35,6 +44,6 @@ export default (io: Server, client: Socket & { sessionId?: string }) => {
       users: room.users
     });
 
-    client.emit('server:client_id', client.id);
+    client.emit('server:client_id', client.sessionId);
   });
 };

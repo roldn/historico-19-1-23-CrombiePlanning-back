@@ -1,5 +1,5 @@
 import { createServer } from 'http';
-import mongoose, { disconnect } from 'mongoose';
+import mongoose from 'mongoose';
 import { Server, Socket } from 'socket.io';
 import app from './app';
 import addUsername from './sockets/addUsername';

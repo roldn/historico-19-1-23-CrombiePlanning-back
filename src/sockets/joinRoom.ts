@@ -22,36 +22,74 @@ export default (io: Server, client: Socket & { sessionId?: string }) => {
       username = '';
     }
 
-    console.log(clientId);
-
     if (!clientId) {
       clientId = client.id;
     } else {
       client.sessionId = clientId;
     }
 
+    const userVotingIndex = room.voting.findIndex(
+      user => user.clientId === client.sessionId
+    );
+
+    const userCard = room.voting[userVotingIndex]?.card;
+
     const user: User = {
       clientId,
       username,
-      card: ''
+      card: userCard || ''
     };
 
     if (room.users.some(user => user.clientId === clientId)) {
       console.log('User already joined to this Room');
+
+      client.join(room.id);
+
       io.to(room.id).emit('server:user_joined', {
         roomUsers: room.users,
         reveal: room.reveal,
         gameName: room.gameOptions.gameName,
         coffeeTime: room.coffee,
-        cardsVotes: room.cards
+        cardsVotes: room.cards,
+        average: room.average
       });
       client.emit('server:user_joined', {
         roomUsers: room.users,
         reveal: room.reveal,
         gameName: room.gameOptions.gameName,
         coffeeTime: room.coffee,
-        cardsVotes: room.cards
+        cardsVotes: room.cards,
+        average: room.average
       });
+      return;
+    }
+
+    if (room.voting.some(user => user.clientId === clientId)) {
+      console.log('User voted and returned to this Room');
+
+      room.users.push(user);
+
+      client.join(room.id);
+
+      io.to(room.id).emit('server:user_joined', {
+        roomUsers: room.users,
+        reveal: room.reveal,
+        gameName: room.gameOptions.gameName,
+        coffeeTime: room.coffee,
+        cardsVotes: room.cards,
+        average: room.average
+      });
+      client.emit('server:user_joined', {
+        roomUsers: room.users,
+        reveal: room.reveal,
+        gameName: room.gameOptions.gameName,
+        coffeeTime: room.coffee,
+        cardsVotes: room.cards,
+        average: room.average
+      });
+
+      await room.save();
+
       return;
     }
 
@@ -67,7 +105,8 @@ export default (io: Server, client: Socket & { sessionId?: string }) => {
       reveal: room.reveal,
       gameName: room.gameOptions.gameName,
       coffeeTime: room.coffee,
-      cardsVotes: room.cards
+      cardsVotes: room.cards,
+      average: room.average
     });
 
     client.emit('server:client_id', clientId);

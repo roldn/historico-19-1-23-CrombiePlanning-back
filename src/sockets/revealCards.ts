@@ -58,6 +58,8 @@ export default (io: Server, client: Socket & { sessionId?: string }) => {
       cardsVotes
     });
 
+    room.average = roundAverageVoting;
+
     room.save();
   });
 };

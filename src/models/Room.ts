@@ -21,6 +21,9 @@ class Room {
 
   @prop({ default: false })
   coffee: boolean;
+
+  @prop()
+  average: number;
 }
 
 const RoomModel = getModelForClass(Room);

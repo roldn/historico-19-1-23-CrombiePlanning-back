@@ -3,7 +3,7 @@ import Room from '../models/Room';
 
 export default (io: Server, client: Socket & { sessionId?: string }) => {
   client.on('client:card_select', async ({ card, roomId, clientId }) => {
-    console.log('Client select card', roomId, card, clientId);
+    console.log('Client select card', roomId, card, clientId, client.sessionId);
 
     const room = await Room.findById(roomId);
 
