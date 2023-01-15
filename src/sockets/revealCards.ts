@@ -58,7 +58,9 @@ export default (io: Server, client: Socket & { sessionId?: string }) => {
       cardsVotes
     });
 
-    room.average = roundAverageVoting;
+    if (!isNaN(roundAverageVoting)) {
+      room.average = roundAverageVoting;
+    }
 
     room.save();
   });

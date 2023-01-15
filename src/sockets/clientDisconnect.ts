@@ -5,13 +5,17 @@ export default (client: Socket & { sessionId?: string }) => {
   client.on('disconnect', async reason => {
     console.log('Client Disconnected:', client.id, client.sessionId, reason);
 
+    if (!client.sessionId) {
+      console.log('Invalid session id');
+      return;
+    }
+
     const room = await Room.findOne({
       'users.clientId': client.sessionId
     }).exec();
 
     if (!room) {
-      console.log('No room found');
-
+      console.log('Cannot delete. Room not found');
       return;
     }
 

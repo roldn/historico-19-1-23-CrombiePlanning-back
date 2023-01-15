@@ -5,9 +5,7 @@ import app from './app';
 import addUsername from './sockets/addUsername';
 
 const PORT = process.env.PORT || 3000;
-const dbURI =
-  process.env.DB_URI ||
-  'mongodb+srv://root:mRrZoApkfwgPugvf@crombiepokerplanning.1tbyem2.mongodb.net/?retryWrites=true&w=majority';
+const dbURI = process.env.DB_URI;
 
 const server = createServer(app);
 const io = new Server(server, {
@@ -19,6 +17,11 @@ const io = new Server(server, {
 async function main() {
   try {
     mongoose.set('strictQuery', false);
+    if (!dbURI) {
+      return console.log(
+        'Error connecting to database. Missing Database Connection String'
+      );
+    }
     await mongoose.connect(dbURI, { dbName: 'PokerPlanning' });
     console.log('Connected to Database');
     server.listen(PORT, () => {

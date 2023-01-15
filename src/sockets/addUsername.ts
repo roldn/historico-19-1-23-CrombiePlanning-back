@@ -2,7 +2,7 @@ import { Server, Socket } from 'socket.io';
 import Room from '../models/Room';
 
 export default (io: Server, client: Socket & { sessionId?: string }) => {
-  client.on('client:add_username', async ({ username, clientId, roomId }) => {
+  client.on('client:add_username', async ({ username, roomId }) => {
     await Room.updateOne(
       {
         _id: roomId
@@ -14,7 +14,7 @@ export default (io: Server, client: Socket & { sessionId?: string }) => {
         }
       },
       {
-        arrayFilters: [{ 'e1.clientId': clientId }]
+        arrayFilters: [{ 'e1.clientId': client.sessionId }]
       }
     );
 
@@ -25,7 +25,7 @@ export default (io: Server, client: Socket & { sessionId?: string }) => {
         roomVoting: room.voting,
         reveal: room.reveal
       });
-      client.emit('server:client_id', client.id);
+      client.emit('server:client_id', client.sessionId);
     }
   });
 };
