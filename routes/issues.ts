@@ -1,9 +1,8 @@
 import { Router } from "express";
+import { getIssue } from "../controllers/issuesController";
 
 const issuesRouter = Router();
 
-issuesRouter.get("/issues", (req, res) => {
-    res.send('Voting Runnning')
-  });
+issuesRouter.get("/", getIssue);
 
 export default issuesRouter;
