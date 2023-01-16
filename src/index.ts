@@ -2,7 +2,7 @@ import { createServer } from 'http';
 import mongoose from 'mongoose';
 import { Server, Socket } from 'socket.io';
 import app from './app';
-import addUsername from './sockets/addUsername';
+import changeUsername from './sockets/changeUsername';
 
 const PORT = process.env.PORT || 3000;
 const dbURI = process.env.DB_URI;
@@ -44,7 +44,7 @@ import clientDisconnect from './sockets/clientDisconnect';
 const onConnection = (socket: Socket) => {
   createRoom(io, socket);
   joinRoom(io, socket);
-  addUsername(io, socket);
+  changeUsername(io, socket);
   selectCard(io, socket);
   revealCards(io, socket);
   startNewVoting(io, socket);
